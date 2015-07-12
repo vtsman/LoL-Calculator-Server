@@ -3,6 +3,7 @@ from flask import request
 import os
 import json
 import requests
+from crossdomain import crossdomain
 
 __location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
@@ -28,6 +29,7 @@ def get_json(response):
 
 @app.route('/' , defaults={'path': ''})
 @app.route('/<path:path>')
+@crossdomain(origin='*')
 def catch_all(path):
     global cached_calls
     global ip_req_count
