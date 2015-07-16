@@ -37,10 +37,10 @@ def catch_all(path):
     addr = str(request.remote_addr)
     if len(split_path) >= 3:
         if split_path[2] == "static-data":
-            if not (path in cached_calls.keys()):
-                cached_calls[path] = get_json(call_api(path, request.args))
-                print("cached call for " + path)
-            return cached_calls[path]
+            if not (request.url in cached_calls.keys()):
+                cached_calls[request.url] = get_json(call_api(path, request.args))
+                print("cached call for " + request.url)
+            return cached_calls[request.url]
     if not (addr in ip_req_count.keys()):
         ip_req_count[addr] = 0
     if ip_req_count[addr] < max_calls:
