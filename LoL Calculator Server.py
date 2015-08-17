@@ -6,6 +6,7 @@ import requests
 from crossdomain import crossdomain
 import time
 import thread
+import logging
 
 __location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
@@ -38,42 +39,56 @@ def get_json(response):
 @crossdomain(origin='*')
 def catch_all(path):
     global cached_calls
-    global ip_req_count
+    global calls
     split_path = path.split("/")
     addr = str(request.remote_addr)
     if len(split_path) >= 3:
         if split_path[2] == "static-data":
             if not (request.url in cached_calls.keys()):
                 cached_calls[request.url] = get_json(call_api(path, request.args))
-                print("cached call for " + request.url)
+                logger.info("cached call for " + request.url)
             return cached_calls[request.url]
-    if not (addr in ip_req_count.keys()):
-        ip_req_count[addr] = 0
-    if ip_req_count[addr] < max_calls:
-        ip_req_count[addr] += 1
-        return get_json(call_api(path, request.args))
-    return "Error: Too many api calls", 401
+    if calls > 2000:
+        return "Error: Too many api calls", 401
+    calls += 1
+    print(calls)
+    return get_json(call_api(path, request.args))
 
 
 def reset_cache(tName):
     global cached_calls
-    global ip_req_count
     while True:
         time.sleep(86400)
         cached_calls = []
-        ip_req_count = []
-        print("flushed cache")
+        logger.info("flushed cache")
+
+
+def reset_call_count(tName):
+    global calls
+    while True:
+        time.sleep(1)
+        calls = 0
 
 
 if __name__ == '__main__':
     global api_key
     global cached_calls
-    global ip_req_count
+    global calls
+    global logger
+
+    logger = logging.getLogger('riot_api_server')
+    logger.setLevel(logging.INFO)
+    hdlr = logging.FileHandler('/var/tmp/riot.log')
+    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+    hdlr.setFormatter(formatter)
+    logger.addHandler(hdlr)
+
     cached_calls = dict()
-    ip_req_count = dict()
+    calls = 0
     api_key = open(os.path.join(__location__, "api.key")).read()
     print(api_key)
 
     thread.start_new_thread(reset_cache, ("Cache reset", ))
+    thread.start_new_thread(reset_call_count, ("Call count reset", ))
 
     app.run(host='0.0.0.0', port=1081)
